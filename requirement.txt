@@ -1,0 +1,5 @@
+discord.py
+redis
+python-dotenv
+PyNaCl
+davey
