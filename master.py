@@ -4,35 +4,27 @@ import random
 import discord
 from discord import app_commands
 from redis.asyncio import Redis
-from config import MASTER_TOKEN
+from config import COMMAND_CHANNEL_ID, MASTER_TOKEN, OPERATOR_ROLE, REDIS_HOST, REDIS_PORT
+
 # ===========================
 # CONFIG
 # ===========================
 
 
-
-REDIS_HOST = "localhost"
-REDIS_PORT = 6379
-
+REDIS_HOST = REDIS_HOST
+REDIS_PORT = REDIS_PORT
+OPERATOR_ROLE = OPERATOR_ROLE
 # Worker IDs
 WORKER_IDS = list(range(1, 17))
 
 REDIS_CHANNEL = "tournament"
 
-# ===========================
+
 # REDIS
-# ===========================
+redis = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
-redis = Redis(
-    host=REDIS_HOST,
-    port=REDIS_PORT,
-    decode_responses=True
-)
 
-# ===========================
 # BOT
-# ===========================
-
 intents = discord.Intents.default()
 
 
@@ -74,22 +66,17 @@ bot = MasterBot()
 # Helper
 # ==========================================================
 
+
 async def publish(action, target, event=None):
 
-    payload = {
-        "action": action,
-        "target": target
-    }
+    payload = {"action": action, "target": target}
 
     if event:
         payload["event"] = event
 
     try:
 
-        await redis.publish(
-            REDIS_CHANNEL,
-            json.dumps(payload)
-        )
+        await redis.publish(REDIS_CHANNEL, json.dumps(payload))
 
         return True
 
@@ -104,19 +91,22 @@ def valid_target(target: str):
 
     if target.lower() == "all":
         return "all"
-
     try:
-
         worker = int(target)
-
         if worker not in WORKER_IDS:
             return None
-
         return worker
 
     except:
         return None
 
+def valid_operator_role(interaction: discord.Interaction) -> bool:
+    if any(role.name == OPERATOR_ROLE for role in interaction.user.roles):
+        return True
+    return False
+
+def valid_command_channel(interaction: discord.Interaction) -> bool:
+    return interaction.channel.id == COMMAND_CHANNEL_ID
 
 # ==========================================================
 # /join
@@ -125,58 +115,51 @@ def valid_target(target: str):
 @app_commands.describe(target="all or worker number (1-16)")
 async def join(interaction: discord.Interaction, target: str):
 
+    if not valid_operator_role(interaction):
+        await interaction.response.send_message(
+            "❌ You do not have permission to use this command.", ephemeral=True
+            )
+        return
+
+    if not valid_command_channel(interaction):
+        await interaction.response.send_message(
+            "❌ This command can only be used in the designated command channel.", ephemeral=True
+        )
+        return
+
     worker = valid_target(target)
 
     if worker is None:
         await interaction.response.send_message(
-            "❌ Invalid worker.\nUse **all** or **1-16**.",
-            ephemeral=True
+            "❌ Invalid worker.\nUse **all** or **1-16**.", ephemeral=True
         )
         return
 
     success = await publish("join", worker)
 
     if success:
-        await interaction.response.send_message(
-            f"✅ Join command sent to **{worker}**"
-        )
+        await interaction.response.send_message(f"✅ Join command sent to **{worker}**")
     else:
-        await interaction.response.send_message(
-            "❌ Redis publish failed."
-        )
+        await interaction.response.send_message("❌ Redis publish failed.")
+
+
 # ==========================================================
 # /leave
 # ==========================================================
 
-@bot.tree.command(
-    name="leave",
-    description="Tell worker(s) to leave voice channel."
-)
 
-@app_commands.describe(
-    target="all or worker number (1-16)"
-)
-
-async def leave(
-
-        interaction: discord.Interaction,
-        target: str
-):
+@bot.tree.command(name="leave", description="Tell worker(s) to leave voice channel.")
+@app_commands.describe(target="all or worker number (1-16)")
+async def leave(interaction: discord.Interaction, target: str):
 
     worker = valid_target(target)
 
     if worker is None:
 
-        await interaction.response.send_message(
-            "❌ Invalid worker.",
-            ephemeral=True
-        )
+        await interaction.response.send_message("❌ Invalid worker.", ephemeral=True)
         return
 
-    success = await publish(
-        "leave",
-        worker
-    )
+    success = await publish("leave", worker)
 
     if success:
 
@@ -186,47 +169,28 @@ async def leave(
 
     else:
 
-        await interaction.response.send_message(
-            "❌ Redis publish failed."
-        )
+        await interaction.response.send_message("❌ Redis publish failed.")
 
 
 # ==========================================================
 # /announce
 # ==========================================================
 
-@bot.tree.command(
-    name="announce",
-    description="Play announcement."
-)
 
+@bot.tree.command(name="announce", description="Play announcement.")
 @app_commands.describe(
-    event="welcome / thanks / match1 ...",
-    target="all or worker number"
+    event="welcome / thanks / match1 ...", target="all or worker number"
 )
-
-async def announce(
-
-        interaction: discord.Interaction,
-        event: str,
-        target: str
-):
+async def announce(interaction: discord.Interaction, event: str, target: str):
 
     worker = valid_target(target)
 
     if worker is None:
 
-        await interaction.response.send_message(
-            "❌ Invalid worker.",
-            ephemeral=True
-        )
+        await interaction.response.send_message("❌ Invalid worker.", ephemeral=True)
         return
 
-    success = await publish(
-        "announce",
-        worker,
-        event
-    )
+    success = await publish("announce", worker, event)
 
     if success:
 
@@ -236,9 +200,8 @@ async def announce(
 
     else:
 
-        await interaction.response.send_message(
-            "❌ Redis publish failed."
-        )
+        await interaction.response.send_message("❌ Redis publish failed.")
+
 
 # helper function
 async def join_all_workers():
