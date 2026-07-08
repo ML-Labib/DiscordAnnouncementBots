@@ -10,8 +10,8 @@ WORKER_03_TOKEN = os.getenv("WORKER_03_TOKEN")
 WORKER_04_TOKEN = os.getenv("WORKER_04_TOKEN")
 WORKER_05_TOKEN = os.getenv("WORKER_05_TOKEN")
 
-REDIS_HOST = os.getenv("REDIS_HOST")
-REDIS_PORT = int(os.getenv("REDIS_PORT"))
+REDIS_HOST = "localhost"
+REDIS_PORT = 6379
 OPERATOR_ROLE = "Support Staff"
 COMMAND_CHANNEL_ID = 1523935069494972517 #BD_Extreme server's #command channel id
 WORKERS = [
@@ -38,6 +38,7 @@ WORKERS = [
     {
         "id": 5,
         "token": WORKER_05_TOKEN,
-        "voice_channel": 1473568140737904772
+        # "voice_channel": 1473568140737904772
+        "voice_channel": 1479072680685731992 #channel 16
     }
 ]

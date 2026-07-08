@@ -215,7 +215,7 @@ async def join_all_workers():
         else:
             print(f"Failed to send join to Worker {worker_id}")
 
-        await asyncio.sleep(random.uniform(0.3, 0.5))
+        await asyncio.sleep(random.uniform(0.3, 1.0))  # Random delay between 0.3 and 1 second
 
     print("Finished sending join commands.")
 

@@ -1,5 +1,6 @@
 import asyncio
 import json
+from random import random
 import sys
 import os
 
@@ -120,7 +121,7 @@ class WorkerBot(discord.Client):
             return
 
         try:
-
+            await asyncio.sleep(random.uniform(0.3, 1.0))  # Random delay between 0.3 and 1 second
             await self.voice_client.disconnect()
 
             self.voice_client = None
